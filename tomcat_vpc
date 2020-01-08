@@ -161,7 +161,7 @@
     },
     "aclEntryAllowAllEgress": {
       "Type": "AWS::EC2::NetworkAclEntry",
-      "DependsOn": [ "naclACX" ],
+      "DependsOn": [ "naclTomcat" ],
       "Properties": {
         "CidrBlock": "0.0.0.0/0",
         "Egress": "true",
@@ -169,20 +169,20 @@
         "RuleAction": "allow",
         "RuleNumber": "100",
         "NetworkAclId": {
-          "Ref": "naclACX"
+          "Ref": "naclTomcat"
         }
       }
     },
     "aclEntryAllowAllIngress": {
       "Type": "AWS::EC2::NetworkAclEntry",
-      "DependsOn": [ "naclACX" ],
+      "DependsOn": [ "naclTomcat" ],
       "Properties": {
         "CidrBlock": "0.0.0.0/0",
         "Protocol": "-1",
         "RuleAction": "allow",
         "RuleNumber": "100",
         "NetworkAclId": {
-          "Ref": "naclACX"
+          "Ref": "naclTomcat"
         }
       }
     },
@@ -271,39 +271,7 @@
         "IpProtocol": "-1",
         "CidrIp": "0.0.0.0/0"
       }
-    },
-
-  "Outputs": {
-	"outVpcTomcat": {
-		"Description": "Tomcat VPC",
-		"Value": { "Ref": "vpcTomcat" },
-		"Export": {
-			"Name": { "Fn::Sub": "${AWS::StackName}-vpcTomcat" }
-		}
-	},
-	"outSubTomcatPub": {
-		"Description": "Tomcat Public Subnet",
-		"Value": { "Ref": "subTomcatPub" },
-		"Export": {
-			"Name": { "Fn::Sub": "${AWS::StackName}-subTomcatPub" }
-		}
-	},
-
-	"outSgDefaultTomcat": {
-		"Description": "Tomcat Default Security Group",
-		"Value": { "Ref": "sgDefaultTomcat" },
-		"Export": {
-			"Name": { "Fn::Sub": "${AWS::StackName}-sgDefaultTomcat" }
-		}
-	},
-	"outNetwork": {
-		"Description": "First two octets of network",
-		"Value": { "Fn::Join" : [ ".", [ {"Ref": "1st"},{"Ref": "2nd"} ] ] },
-		"Export": {
-			"Name": { "Fn::Sub": "${AWS::StackName}-netTomcat" }
-		}
-	}
+    }
 
   }
-}
 }
