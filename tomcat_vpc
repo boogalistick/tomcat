@@ -59,7 +59,7 @@
       }
     },
 
-    "igwACX": {
+    "igwTomcat": {
       "Type": "AWS::EC2::InternetGateway",
       "Properties": {
         "Tags": [
@@ -132,13 +132,6 @@
         ]
       }
     },
-    "eipNatGwACX": {
-      "Type": "AWS::EC2::EIP",
-      "Properties": {
-        "Domain": "vpc"
-      }
-    },
-
     "sgDefaultTomcat": {
       "Type": "AWS::EC2::SecurityGroup",
       "DependsOn": [ "vpcTomcat" ],
