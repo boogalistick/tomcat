@@ -140,6 +140,20 @@
         "VpcId": {
           "Ref": "vpcTomcat"
         },
+        "SecurityGroupIngress" : [
+          {
+            "IpProtocol" : "tcp",
+            "FromPort" : "22",
+            "ToPort" : "22",
+            "CidrIp" : "0.0.0.0/0"
+          },
+          {
+            "IpProtocol" : "tcp",
+            "FromPort" : "8080",
+            "ToPort" : "8080",
+            "CidrIp" : "0.0.0.0/0"
+          }
+          ],
         "Tags": [
           {
             "Key": "Environment",
@@ -238,19 +252,6 @@
         },
         "DhcpOptionsId": {
           "Ref": "dhcpOptions"
-        }
-      }
-    },
-    "sgIngressDefaultTomcat": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-      "DependsOn": [ "sgDefaultTomcat" ],
-      "Properties": {
-        "GroupId": {
-          "Ref": "sgDefaultTomcat"
-        },
-        "IpProtocol": "-1",
-        "SourceSecurityGroupId": {
-          "Ref": "sgDefaultTomcat"
         }
       }
     },
