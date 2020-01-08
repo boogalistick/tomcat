@@ -1,0 +1,308 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Setup VPC and Network Resources",
+  "Parameters": {
+	"1st": {
+		"Type": "String",
+		"Default": "172",
+		"AllowedValues": ["10","172","192"],
+		"Description": "First octet of network CIDR range"
+	  },
+	"2nd": {
+		"Type": "String",
+		"Default": "21",
+		"MinLength": "1",
+		"MaxLength": "3",
+		"AllowedPattern": "^[0-9]*$",
+		"Description": "Second octet of network CIDR range"
+	  }
+  },
+  "Resources": {
+    "vpcTomcat": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": { "Fn::Join" : [ ".", [ {"Ref": "1st"},{"Ref": "2nd"},"0","0/21" ]] },
+        "InstanceTenancy": "default",
+        "EnableDnsSupport": "true",
+        "EnableDnsHostnames": "true",
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "Tomcat"
+          },
+          {
+            "Key": "Name",
+            "Value": "Tomcat VPC"
+          }
+        ]
+      }
+    },
+    "subTomcatPub": {
+      "Type": "AWS::EC2::Subnet",
+      "DependsOn": [ "vpcTomcat" ],
+      "Properties": {
+        "CidrBlock": { "Fn::Join" : [ ".", [ {"Ref": "1st"},{"Ref": "2nd"},"0","0/24" ]] },
+        "AvailabilityZone": { "Fn::Join": [ "", [ { "Ref": "AWS::Region" },"a" ] ] },
+        "VpcId": {
+          "Ref": "vpcTomcat"
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "Tomcat"
+          },
+          {
+            "Key": "Name",
+            "Value": "Tomcat Public Subnet"
+          }
+        ]
+      }
+    },
+
+    "igwACX": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "Tomcat"
+          },
+          {
+            "Key": "Name",
+            "Value": "Tomcat IGW"
+          }
+        ]
+      }
+    },
+    "dhcpOptions": {
+      "Type": "AWS::EC2::DHCPOptions",
+      "Properties": {
+        "DomainName": { "Fn::Join": [ ".", [ { "Ref": "AWS::Region" },"compute","internal" ] ] },
+        "DomainNameServers": [
+          "AmazonProvidedDNS"
+        ],
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "Tomcat"
+          },
+          {
+            "Key": "Name",
+            "Value": "Tomcat DHCP Options"
+          }
+        ]
+      }
+    },
+    "naclTomcat": {
+      "Type": "AWS::EC2::NetworkAcl",
+      "DependsOn": [ "vpcTomcat" ],
+      "Properties": {
+        "VpcId": {
+          "Ref": "vpcTomcat"
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "Tomcat"
+          },
+          {
+            "Key": "Name",
+            "Value": "Tomcat NACL"
+          }
+        ]
+      }
+    },
+
+    "rttabPubTomcat": {
+      "Type": "AWS::EC2::RouteTable",
+      "DependsOn": [ "vpcTomcat" ],
+      "Properties": {
+        "VpcId": {
+          "Ref": "vpcTomcat"
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "Tomcat"
+          },
+          {
+            "Key": "Name",
+            "Value": "Tomcat Public Route Table"
+          }
+        ]
+      }
+    },
+    "eipNatGwACX": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
+      }
+    },
+
+    "sgDefaultTomcat": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "DependsOn": [ "vpcTomcat" ],
+      "Properties": {
+        "GroupDescription": "Default Tomcat VPC SG",
+        "VpcId": {
+          "Ref": "vpcTomcat"
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "Tomcat"
+          },
+          {
+            "Key": "Name",
+            "Value": "Tomcat Default Security Group"
+          }
+        ]
+      }
+    },
+    "aclEntryAllowAllEgress": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "DependsOn": [ "naclACX" ],
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Egress": "true",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100",
+        "NetworkAclId": {
+          "Ref": "naclACX"
+        }
+      }
+    },
+    "aclEntryAllowAllIngress": {
+      "Type": "AWS::EC2::NetworkAclEntry",
+      "DependsOn": [ "naclACX" ],
+      "Properties": {
+        "CidrBlock": "0.0.0.0/0",
+        "Protocol": "-1",
+        "RuleAction": "allow",
+        "RuleNumber": "100",
+        "NetworkAclId": {
+          "Ref": "naclACX"
+        }
+      }
+    },
+    "subnetAclAssociationPublic": {
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "DependsOn": [ "subTomcatPub","naclTomcat" ],
+      "Properties": {
+        "NetworkAclId": {
+          "Ref": "naclTOmcat"
+        },
+        "SubnetId": {
+          "Ref": "subTomcatPub"
+        }
+      }
+    },
+
+    "vpcGatewayAttachment": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "DependsOn": [ "vpcTomcat","igwTomcat" ],
+      "Properties": {
+        "VpcId": {
+          "Ref": "vpcTomcat"
+        },
+        "InternetGatewayId": {
+          "Ref": "igwTomcat"
+        }
+      }
+    },
+    "subnetRouteTableAssociationPublic": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "DependsOn": [ "subTomcatPub","rttabPubTomcat" ],
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "rttabPubTomcat"
+        },
+        "SubnetId": {
+          "Ref": "subTomcatPub"
+        }
+      }
+    },
+    "rtigwTomcat": {
+      "Type": "AWS::EC2::Route",
+      "DependsOn": [ "igwTomcat","rttabPubTomcat" ],
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "RouteTableId": {
+          "Ref": "rttabPubTomcat"
+        },
+        "GatewayId": {
+          "Ref": "igwTomcat"
+        }
+      }
+    },
+    "vpcDHCPOptionsAssociation": {
+      "Type": "AWS::EC2::VPCDHCPOptionsAssociation",
+      "DependsOn": [ "vpcTomcat","dhcpOptions" ],
+      "Properties": {
+        "VpcId": {
+          "Ref": "vpcTomcat"
+        },
+        "DhcpOptionsId": {
+          "Ref": "dhcpOptions"
+        }
+      }
+    },
+    "sgIngressDefaultTomcat": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "DependsOn": [ "sgDefaultTomcat" ],
+      "Properties": {
+        "GroupId": {
+          "Ref": "sgDefaultTomcat"
+        },
+        "IpProtocol": "-1",
+        "SourceSecurityGroupId": {
+          "Ref": "sgDefaultTomcat"
+        }
+      }
+    },
+    "sgEgressDefaultTomcat": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "DependsOn": [ "sgDefaultTomcat" ],
+      "Properties": {
+        "GroupId": {
+          "Ref": "sgDefaultTomcat"
+        },
+        "IpProtocol": "-1",
+        "CidrIp": "0.0.0.0/0"
+      }
+    },
+
+  "Outputs": {
+	"outVpcTomcat": {
+		"Description": "Tomcat VPC",
+		"Value": { "Ref": "vpcTomcat" },
+		"Export": {
+			"Name": { "Fn::Sub": "${AWS::StackName}-vpcTomcat" }
+		}
+	},
+	"outSubTomcatPub": {
+		"Description": "Tomcat Public Subnet",
+		"Value": { "Ref": "subTomcatPub" },
+		"Export": {
+			"Name": { "Fn::Sub": "${AWS::StackName}-subTomcatPub" }
+		}
+	},
+
+	"outSgDefaultTomcat": {
+		"Description": "Tomcat Default Security Group",
+		"Value": { "Ref": "sgDefaultTomcat" },
+		"Export": {
+			"Name": { "Fn::Sub": "${AWS::StackName}-sgDefaultACX" }
+		}
+	},
+	"outNetwork": {
+		"Description": "First two octets of network",
+		"Value": { "Fn::Join" : [ ".", [ {"Ref": "1st"},{"Ref": "2nd"} ] ] },
+		"Export": {
+			"Name": { "Fn::Sub": "${AWS::StackName}-netTomcat" }
+		}
+	}
+
+  }
+}
