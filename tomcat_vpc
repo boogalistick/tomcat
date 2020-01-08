@@ -293,7 +293,7 @@
 		"Description": "Tomcat Default Security Group",
 		"Value": { "Ref": "sgDefaultTomcat" },
 		"Export": {
-			"Name": { "Fn::Sub": "${AWS::StackName}-sgDefaultACX" }
+			"Name": { "Fn::Sub": "${AWS::StackName}-sgDefaultTomcat" }
 		}
 	},
 	"outNetwork": {
