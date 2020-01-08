@@ -184,7 +184,7 @@
       "DependsOn": [ "subTomcatPub","naclTomcat" ],
       "Properties": {
         "NetworkAclId": {
-          "Ref": "naclTOmcat"
+          "Ref": "naclTomcat"
         },
         "SubnetId": {
           "Ref": "subTomcatPub"
