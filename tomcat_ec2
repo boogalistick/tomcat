@@ -1,0 +1,136 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Setup EC2 with Tomcat",
+  "Mappings" : {
+    "ByRegionInstanceAmiId" : {
+      "eu-west-2": {
+        "prod": "ami-0be057a22c63962cb"
+      }
+    }
+  },
+  "Parameters": {
+    "NetworkStackName": {
+      "Description": "Tomcat Stack",
+      "Type": "String",
+      "MinLength": 1,
+      "MaxLength": 64,
+      "Default": "Net"
+    },
+    "InstanceKey": {
+      "Description": "Key to allow access to instances (must be valid)",
+      "Type": "String",
+      "MinLength": 1,
+      "MaxLength": 32,
+      "Default": "lynx"
+    },
+    "InstanceType": {
+      "Description": "Default is m5.2xlarge, but t2.micro is included for testing",
+      "Type": "String",
+      "AllowedValues": [ "t2.micro","m5.xlarge" ],
+      "Default": "t2.micro"
+    }
+  },
+  "Resources": {
+    "instProfTomcat": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [ {"Fn::ImportValue": {"Fn::Sub":"${NetworkStackName}-roleTomcat"}} ]
+      }
+    },
+    "ec2Tomcat": {
+      "Type": "AWS::EC2::Instance",
+	  "Properties": {
+      "BlockDeviceMappings": [
+        {
+          "DeviceName": "/dev/sda1",
+          "Ebs": { "VolumeType": "gp2","VolumeSize": "10" }
+        }
+      ],
+	  "DisableApiTermination": "True",
+    "IamInstanceProfile": { "Ref": "instProfTomcat" },
+	  "ImageId": { "Fn::FindInMap" : [ "ByRegionInstanceAmiId", { "Ref" : "AWS::Region" }, "prod" ] },
+	  "InstanceInitiatedShutdownBehavior": "stop",
+	  "InstanceType": { "Ref": "InstanceType" },
+	  "KeyName": { "Ref": "InstanceKey" },
+	  "PrivateIpAddress": { "Fn::Join": ["", [ {"Fn::ImportValue": {"Fn::Sub":"${NetworkStackName}-netTomcat"}},".6",".71" ] ] },
+  	  "SecurityGroupIds": [ {"Fn::ImportValue": {"Fn::Sub":"${NetworkStackName}-sgDefaultTomcat"}} ],
+  	  "SubnetId": {"Fn::ImportValue": {"Fn::Sub":"${NetworkStackName}-subTomcatPub"}},
+	  "Tags": [
+		{
+		  "Key": "Environment",
+		  "Value": "Tomcat"
+		},
+		{
+		  "Key": "Name",
+		  "Value": "Tomcat EC2 instance"
+		},
+		{
+		  "Key": "Type",
+		  "Value": "Webserver"
+		}
+      ],
+	  "UserData": { "Fn::Base64": { "Fn::Join": ["", [
+        "#!/bin/bash","\n",
+	    "sudo apt -y update","\n",
+        "sudo yum -y install default-jdk","\n",
+		"# CONFIGURE JAVA","\n",
+        "sudo cat <<EOF >> /etc/profile","\n",
+        "export JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64","\n",
+        "EOF","\n",
+		"sudo source /etc/profile","\n",
+		"# CREATE TOMCAT USER","\n",
+		"sudo groupadd tomcat","\n",
+		"sudo useradd -s /bin/false -g tomcat -d /opt/tomcat tomcat","\n",
+    "# INSTALL TOMCAT","\n",
+		"sudo cd /tmp","\n",
+		"sudo curl -O http://mirror.cc.columbia.edu/pub/software/apache/tomcat/tomcat-9/v9.0.10/bin/apache-tomcat-9.0.10.tar.gz","\n",
+    "sudo mkdir /opt/tomcat","\n",
+    "sudo tar xzvf apache-tomcat-9*tar.gz -C /opt/tomcat --strip-components=1","\n",
+    "# Update permissions","\n",
+		"cd /opt/tomcat","\n",
+		"sudo chgrp -R tomcat /opt/tomcat","\n",
+    "sudo chmod -R g+r conf","\n",
+    "sudo chmod g+x conf","\n",
+    "sudo chown -R tomcat webapps/ work/ temp/ logs/","\n",
+		"# SETUP TOMCAT SYSTEMD SERVICE","\n",
+		"sudo cat <<EOF > /etc/systemd/system/tomcat.service","\n",
+		"[Unit]","\n",
+		"Description=Apache Tomcat Web Application Container","\n",
+    "After=network.target","\n",
+		"\n",
+		"[Service]","\n",
+		"Type=forking","\n",
+    "\n",
+    "Environment=JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64","\n",
+    "Environment=CATALINA_PID=/opt/tomcat/temp/tomcat.pid","\n",
+    "Environment=CATALINA_HOME=/opt/tomcat","\n",
+    "Environment=CATALINA_BASE=/opt/tomcat","\n",
+    "Environment='CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC'","\n",
+    "Environment='JAVA_OPTS=-Djava.awt.headless=true -Djava.security.egd=file:/dev/./urandom'","\n",
+    "\n",
+    "ExecStart=/opt/tomcat/bin/startup.sh","\n",
+    "ExecStop=/opt/tomcat/bin/shutdown.sh","\n",
+    "\n",
+		"User=centos","\n",
+		"Group=tomcat","\n",
+    "UMask=0007","\n",
+    "RestartSec=10","\n",
+    "User=centos","\n",
+		"Restart=always","\n",
+    "\n",
+    "[Install]","\n",
+    "WantedBy=multi-user.target","\n",
+		"EOF","\n",
+    "sudo systemctl daemon-reload","\n",
+    "sudo systemctl start tomcat","\n",
+    "sudo systemctl enable tomcat","\n",
+    "sudo ufw allow 8080","\n"
+        ] ] }
+        }
+      }
+    }
+
+
+  }
+}

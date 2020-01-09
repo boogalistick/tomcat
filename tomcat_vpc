@@ -10,7 +10,7 @@
 	  },
 	"2nd": {
 		"Type": "String",
-		"Default": "21",
+		"Default": "22",
 		"MinLength": "1",
 		"MaxLength": "3",
 		"AllowedPattern": "^[0-9]*$",
@@ -41,7 +41,7 @@
       "Type": "AWS::EC2::Subnet",
       "DependsOn": [ "vpcTomcat" ],
       "Properties": {
-        "CidrBlock": { "Fn::Join" : [ ".", [ {"Ref": "1st"},{"Ref": "2nd"},"0","0/24" ]] },
+        "CidrBlock": { "Fn::Join" : [ ".", [ {"Ref": "1st"},{"Ref": "2nd"},"0","0/22" ]] },
         "AvailabilityZone": { "Fn::Join": [ "", [ { "Ref": "AWS::Region" },"a" ] ] },
         "VpcId": {
           "Ref": "vpcTomcat"
@@ -265,7 +265,60 @@
         "IpProtocol": "-1",
         "CidrIp": "0.0.0.0/0"
       }
-    }
+    },
+    "roleHostTomcat": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+           "AssumeRolePolicyDocument": {
+              "Version" : "2012-10-17",
+              "Statement": {
+					"Effect": "Allow",
+					"Principal": { "Service": "ec2.amazonaws.com" },
+					"Action": "sts:AssumeRole"
+			  }
+			},
+		  "ManagedPolicyArns": [ "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM" ],
+		  "Path": "/"
+		}
+	}
 
+  },
+
+  "Outputs": {
+	"outVpcTomcat": {
+		"Description": "Tomcat VPC",
+		"Value": { "Ref": "vpcTomcat" },
+		"Export": {
+			"Name": { "Fn::Sub": "${AWS::StackName}-vpcTomcat" }
+		}
+	},
+	"outSubTomcatPub": {
+		"Description": "Tomcat Public Subnet",
+		"Value": { "Ref": "subTomcatPub" },
+		"Export": {
+			"Name": { "Fn::Sub": "${AWS::StackName}-subTomcatPub" }
+		}
+	},
+	"outSgDefaultTomcat": {
+		"Description": "Tomcat Default Security Group",
+		"Value": { "Ref": "sgDefaultTomcat" },
+		"Export": {
+			"Name": { "Fn::Sub": "${AWS::StackName}-sgDefaultTomcat" }
+		}
+	},
+	"outNetwork": {
+		"Description": "First two octets of network",
+		"Value": { "Fn::Join" : [ ".", [ {"Ref": "1st"},{"Ref": "2nd"} ] ] },
+		"Export": {
+			"Name": { "Fn::Sub": "${AWS::StackName}-netTomcat" }
+		}
+	},
+  "outRoleTomcat": {
+		"Description": "SSM Role for EC2 Hosts",
+		"Value": { "Ref": "roleHostTomcat" },
+		"Export": {
+			"Name": { "Fn::Sub": "${AWS::StackName}-roleTomcat" }
+		}
+	}
   }
 }
